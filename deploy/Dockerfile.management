@@ -1,0 +1,38 @@
+# Builds a NetBird management server that points stock agents at our flow
+# receiver — WITHOUT editing any NetBird source. The only change is a single
+# go.mod `replace` swapping the upstream management-integrations stub for our
+# fork (which enables flow + mints the receiver token).
+#
+# Mirrors upstream management/Dockerfile.multistage (CGO_ENABLED=1, build
+# ./management). Set NETBIRD_VERSION to EXACTLY the version you run today so the
+# integration seam signatures match.
+#
+# Build (run from the netbird-flow-mgmt repo root so the fork is in context):
+#   docker build -f deploy/Dockerfile.management \
+#     --build-arg NETBIRD_VERSION=v0.65.3 \
+#     -t netbird-mgmt-flow:v0.65.3 .
+ARG NETBIRD_VERSION=v0.65.3
+
+FROM golang:1.25-bookworm AS builder
+ARG NETBIRD_VERSION
+RUN apt-get update && apt-get install -y git gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+
+# Our drop-in replacement for github.com/netbirdio/management-integrations/integrations
+COPY management-integrations /fork
+
+# Upstream NetBird at the pinned version — unmodified.
+WORKDIR /src
+RUN git clone --depth 1 --branch ${NETBIRD_VERSION} https://github.com/netbirdio/netbird.git .
+
+# The ONE change: redirect the integrations module to our fork.
+RUN go mod edit -replace github.com/netbirdio/management-integrations/integrations=/fork
+
+# -mod=mod lets the build reconcile go.sum with the fork's (already netbird-owned)
+# transitive deps without a full tidy.
+RUN CGO_ENABLED=1 GOOS=linux go build -mod=mod -ldflags="-s -w" -o netbird-mgmt ./management
+
+FROM ubuntu:24.04
+RUN apt update && apt install -y ca-certificates && rm -fr /var/cache/apt
+ENTRYPOINT [ "/go/bin/netbird-mgmt", "management" ]
+CMD ["--log-file", "console"]
+COPY --from=builder /src/netbird-mgmt /go/bin/netbird-mgmt

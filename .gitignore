@@ -1,0 +1,7 @@
+# local secrets
+.env
+
+# Go build artifacts
+/netbird-mgmt
+*.test
+*.out
