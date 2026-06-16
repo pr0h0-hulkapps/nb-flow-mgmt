@@ -1,0 +1,46 @@
+# Builds a patched COMBINED netbird-server (Management + Signal + Relay + STUN) —
+# the drop-in replacement for netbirdio/netbird-server:latest used by the
+# all-in-one quickstart compose. Same idea as Dockerfile.management, but builds
+# ./combined and keeps the netbird-server entrypoint.
+#
+# The combined server links the management server, so the one go.mod `replace`
+# (swapping the management-integrations stub for our fork) patches it too. No
+# NetBird source edits; agents are never touched.
+#
+# Set NETBIRD_VERSION to EXACTLY the version your netbird-server runs today
+# (if you run :latest, pin it to the matching tag, e.g. what `netbird version`
+# on an agent reports).
+#
+# Build (from the netbird-flow-mgmt repo root so the fork is in context):
+#   docker build -f deploy/Dockerfile.netbird-server \
+#     --build-arg NETBIRD_VERSION=v0.72.4 \
+#     -t netbird-server-flow:v0.72.4 .
+ARG NETBIRD_VERSION=v0.72.4
+
+FROM golang:1.25-bookworm AS builder
+ARG NETBIRD_VERSION
+RUN apt-get update && apt-get install -y git gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+
+# Our drop-in replacement for github.com/netbirdio/management-integrations/integrations
+COPY management-integrations /fork
+
+# Upstream NetBird at the pinned version — unmodified.
+WORKDIR /src
+RUN git clone --depth 1 --branch ${NETBIRD_VERSION} https://github.com/netbirdio/netbird.git .
+
+# The ONE change: redirect the integrations module to our fork.
+RUN go mod edit -replace github.com/netbirdio/management-integrations/integrations=/fork
+
+# Build the combined server, mirroring upstream combined/Dockerfile.multistage
+# (version ldflags + CGO). -mod=mod reconciles go.sum with the fork's deps.
+RUN CGO_ENABLED=1 GOOS=linux go build -mod=mod \
+    -ldflags="-s -w \
+    -X github.com/netbirdio/netbird/version.version=${NETBIRD_VERSION} \
+    -X main.builtBy=netbird-flow-mgmt" \
+    -o netbird-server ./combined
+
+FROM ubuntu:24.04
+RUN apt update && apt install -y ca-certificates && rm -fr /var/cache/apt
+ENTRYPOINT [ "/go/bin/netbird-server" ]
+CMD ["--config", "/etc/netbird/config.yaml"]
+COPY --from=builder /src/netbird-server /go/bin/netbird-server
