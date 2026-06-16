@@ -1,0 +1,34 @@
+netbird-flow-mgmt
+=================
+
+This project is licensed under the GNU General Public License v3.0 (see LICENSE).
+
+It is a DERIVATIVE WORK of NetBird's management-integrations module:
+
+  Upstream:  github.com/netbirdio/management-integrations
+  License:   GPL-3.0
+  Forked at: commit 2355d97 ("Add support for cache store in
+             IntegratedValidatorImpl constructor and update dependencies", #45)
+
+The following files originate from that upstream project and are modified or
+unmodified copies, redistributed under the same GPL-3.0 license:
+
+  management-integrations/integrations.go        (unmodified)
+  management-integrations/validator.go           (unmodified)
+  management-integrations/port_forwarding.go     (unmodified)
+  management-integrations/extra_settings.go      (modified: report FlowEnabled)
+  management-integrations/config/config.go        (modified: inject FlowConfig)
+
+The following files are original to this project (also GPL-3.0):
+
+  management-integrations/flowconfig.go
+  management-integrations/flowtoken/
+
+This module is built into a patched NetBird management server, which links
+against github.com/netbirdio/netbird. NetBird's management server is licensed
+under the GNU Affero General Public License v3.0 (AGPL-3.0). If you distribute a
+patched management server binary or image, the AGPL-3.0 terms apply to that
+combined work — including the obligation to offer the corresponding source to
+users who interact with it over a network.
+
+No warranty; see the LICENSE file for full terms.

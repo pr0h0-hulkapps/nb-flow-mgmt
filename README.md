@@ -73,3 +73,12 @@ cd management-integrations && go test ./flowtoken/   # token golden vector (matc
 
 The golden-vector test pins the HMAC wire format; the receiver in `wazuh-siem`
 asserts the same constants, so minting and verification cannot drift.
+
+## License
+
+GPL-3.0 (see [LICENSE](LICENSE)). This is a derivative work of
+[netbirdio/management-integrations](https://github.com/netbirdio/management-integrations)
+(GPL-3.0); the patched management server it builds links against
+[netbirdio/netbird](https://github.com/netbirdio/netbird) (AGPL-3.0). See
+[NOTICE](NOTICE) for attribution and what the AGPL-3.0 means if you distribute a
+patched management binary/image.
